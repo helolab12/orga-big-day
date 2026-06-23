@@ -6,6 +6,34 @@ import plotly.express as px
 from datetime import datetime
 
 st.set_page_config(page_title="Organisation Big Day", page_icon="🥂", layout="wide")
+# ==============================================================================
+# FOND D'ÉCRAN 
+# ==============================================================================
+import base64
+
+def ajouter_fond_ecran(fichier_image):
+    try:
+        with open(fichier_image, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: linear-gradient(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.75)), 
+                                  url("data:image/jpg;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    except FileNotFoundError:
+        pass # Évite de faire planter l'application si l'image n'est pas encore trouvée localement
+
+# On active le fond d'écran avec votre image
+ajouter_fond_ecran("fontaine.jpg")
 
 # ==============================================================================
 # GESTION DES BASES DE DONNÉES (MÉMOIRE)
@@ -172,7 +200,7 @@ with grand_onglet_annonces:
     sous_onglet_liste, sous_onglet_statistiques = st.tabs(["📋 La Liste modifiable", "📈 Statistiques de cet onglet"])
     
     with sous_onglet_liste:
-        st.subheader("Qui devons-nous prévenir ?")
+        st.subheader("Liste des personnes à prévenir")
         with st.expander("➕ Ajouter une nouvelle personne à la liste", expanded=False):
             with st.form("form_ajout"):
                 nouvelle_personne = st.text_input("Nom de la personne / Groupe")
@@ -215,7 +243,7 @@ with grand_onglet_annonces:
 # ==============================================================================
 with grand_onglet_discussion:
     st.subheader("💬 Discussion pour les préparatifs")
-    st.write("Partagez vos idées, posez vos questions et taguez les bonnes personnes !")
+    st.write("Partagez vos idées et posez vos questions !")
     
     # 1. Formulaire pour publier
     with st.form("form_commentaires"):
@@ -238,7 +266,7 @@ with grand_onglet_discussion:
             
         with col3:
             # Le Type de message
-            type_msg = st.selectbox("Type de message :", ["💬 Discussion", "💡 Idée / Inspiration", "❓ Question", "🚨 Urgent"])
+            type_msg = st.selectbox("Type de message :", ["💬 Discussion", "💡 Idée / Inspiration", "❓ Question", "🚨 Urgent", "🛠️ Correction du Site"])
             
         message = st.text_area("Votre message :", placeholder="Écrivez votre texte ici...")
         bouton_publier = st.form_submit_button("🚀 Publier sur le fil")
@@ -276,4 +304,4 @@ with grand_onglet_discussion:
             
             # Le Tag affiché de manière élégante s'il cible quelqu'un
             if c['Tag'] != "Tout le monde":
-                st.markdown(f"📌 *Notification envoyée aux : **@{c['Tag']}***")
+                st.markdown(f"📌 *Message destiné en particulier à **@{c['Tag']}***")
