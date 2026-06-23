@@ -82,7 +82,7 @@ with onglet_annonces:
 
 # --- ONGLET 2 : L'ÉVOLUTION ---
 with onglet_evolution:
-    st.header("Où en sommes-nous ?")
+    st.header("Progression")
     if st.session_state.liste_annonces:
         total = len(st.session_state.liste_annonces)
         faits = sum(1 for x in st.session_state.liste_annonces if x.get("Fait") == True)
