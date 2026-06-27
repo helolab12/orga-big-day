@@ -530,23 +530,41 @@ with grand_onglet_discussion:
             type_msg = st.selectbox("Type de message :", ["💬 Discussion", "💡 Idée / Inspiration", "❓ Question", "🚨 Urgent", "🛠️ Correction du Site"])
             
         message = st.text_area("Votre message :", placeholder="Écrivez votre texte ici...")
-        bouton_publier = st.form_submit_button("🚀 Publier sur le fil")
+        # AJOUT : Uploader de fichier (Accepte les images, PDF, Word, Excel)
+        fichier_importe = st.file_uploader("Ajouter une photo ou un document (optionnel) :", type=["png", "jpg", "jpeg", "pdf", "docx", "xlsx"])
         
-        if bouton_publier and auteur and message:
+        bouton_envoi = st.form_submit_button("🚀 Publier")
+        
+        if bouton_envoi and auteur and (message or fichier_importe):
             import datetime
-            nouveau_comm = {
+            import base64
+            
+            # Gestion du fichier joint s'il existe
+            pieces_jointes = None
+            if fichier_importe is not None:
+                # Lecture et encodage du fichier en Base64
+                fichier_bytes = base64.b64encode(fichier_importe.read()).decode()
+                pieces_jointes = {
+                    "nom": fichier_importe.name,
+                    "type": fichier_importe.type,
+                    "data": fichier_bytes
+                }
+            
+            nouveau_commentaire = {
                 "Auteur": auteur,
-                "Message": message,
                 "Tag": qui_taguer,
                 "Type": type_msg,
-                "Date": datetime.datetime.now().strftime("%d %B %Y à %H:%M")
+                "Message": message,
+                "Date": datetime.datetime.now().strftime("%d/%m à %H:%M"),
+                "Fichier": pieces_jointes  # Nouvelle donnée stockée
             }
-            # On l'ajoute au DÉBUT de la liste pour que le plus récent soit en haut !
-            st.session_state.liste_discussion.insert(0, nouveau_comm)
+            
+            # Insertion au début de la liste (le plus récent en haut)
+            st.session_state.liste_discussion.insert(0, nouveau_commentaire)
             sauvegarder_donnees(FICHIER_DISCUSSION, st.session_state.liste_discussion)
-            st.success("Message publié !")
+            st.success("Message envoyé !")
             st.rerun()
-
+        
     st.divider()
 
     # 2. Filtre de discussion
@@ -591,12 +609,12 @@ with grand_onglet_discussion:
 
     st.write("") # Petit espace visuel
 
-    # Affichage du fil de discussion (Filtré et sans mélange HTML/CSS)
+    # Affichage du fil de discussion
     with st.container(key="cadre_discussion_filtree"):
         if not discussion_filtree:
             st.info("Aucun commentaire ne correspond à vos filtres de recherche.")
         else:
-            for c in discussion_filtree:
+            for idx_filtre, c in enumerate(discussion_filtree):
                 with st.container(border=True):
                     col_inf1, col_inf2 = st.columns([3, 1])
                     with col_inf1:
@@ -604,7 +622,38 @@ with grand_onglet_discussion:
                     with col_inf2:
                         st.write(f"**{c['Type']}**")
                     
-                    st.write(c['Message'])
+                    if c['Message']:
+                        st.write(c['Message'])
+                    
+                    # --- NOUVEAU : AFFICHAGE DES PIÈCES JOINTES ---
+                    if c.get("Fichier") and c["Fichier"] is not None:
+                        f_info = c["Fichier"]
+                        # Décodage pour utilisation en direct
+                        f_data = base64.b64decode(f_info["data"])
+                        
+                        # CAS 1 : C'est une image -> On l'affiche directement sur l'écran
+                        if "image" in f_info["type"]:
+                            st.image(f_data, caption=f_info["nom"], use_container_width=True)
+                        
+                        # CAS 2 : C'est un document (PDF, Excel...) -> On met un bouton de téléchargement
+                        else:
+                            st.download_button(
+                                label=f"📂 Télécharger {f_info['nom']}",
+                                data=f_data,
+                                file_name=f_info["nom"],
+                                mime=f_info["type"],
+                                key=f"down_{idx_filtre}_{f_info['nom']}"
+                            )
                     
                     if c['Tag'] != "Tout le monde":
-                        st.markdown(f"*Message destiné en particulier à **@{c['Tag']}***")
+                        st.markdown(f"📌 *Message destiné en particulier à **@{c['Tag']}***")
+                    
+                    # --- BOUTON DE SUPPRESSION ---
+                    col_espace, col_suppr = st.columns([5, 1])
+                    with col_suppr:
+                        if st.button("🗑️ Supprimer", key=f"suppr_disc_{c['Auteur']}_{idx_filtre}"):
+                            if c in st.session_state.liste_discussion:
+                                st.session_state.liste_discussion.remove(c)
+                                sauvegarder_donnees(FICHIER_DISCUSSION, st.session_state.liste_discussion)
+                                st.success("Commentaire supprimé !")
+                                st.rerun()
